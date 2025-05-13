@@ -1,0 +1,20 @@
+TO: event-8l2d0xg2@dtdg.com
+SUBJECT: Alert: TMA Washington DC 11th Floor IDF (10.67.40.163) - communication lost
+CONTENT:
+
+Alert Title: TMA Washington DC 11th Floor IDF (10.67.40.163) - communication lost
+Alert Description: Communication with 'TMA Washington DC 11th Floor IDF (10.67.40.163)' has been lost.
+Alert Type: Communication Lost
+Severity: Critical
+Alert Level: Email DC2
+Device: TMA Washington DC 11th Floor IDF (10.67.40.163)
+Time Detected: 02/21/2025 10:04:57 am
+Notification Time: 02/21/2025 10:14:57 am
+Notification Policy: Email DC2
+Action Name: Email DC2
+User URL: https://dc2-uvadcep01/desktop/
+Location: TMA Washington DC 11th Floor IDF
+Primary Contact: tmna_dc_support@toyota.com
+Notes: APC Web/SNMP Management Card (MB:v4.1.0 PF:v7.1.2 PN:apc_hw05_aos_712.bin AF1:v7.1.2 AN1:apc_hw05_sumx_712.bin MN:AP9630 HR:05 SN: ZA1512010492 MD:03/17/2015) (Embedded PowerNet SNMP Agent SW v2.2 compatible)
+Alert ID: nbErrorCond_B947EC0F
+Version: 8.1.1.3

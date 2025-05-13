@@ -1,0 +1,6 @@
+To forward this email to Datadog, send the content of /app/data/datadog_email_20250508_163101.eml to event-8l2d0xg2@dtdg.co
+
+You can use the 'mail' command:
+cat /app/data/datadog_email_20250508_163101.eml | mail -s 'Alert: TMA Washington DC 11th Floor IDF (10.67.40.163) - communication lost' event-8l2d0xg2@dtdg.co
+
+Or forward from your email client (copy and paste the raw content).

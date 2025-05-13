@@ -1,0 +1,22 @@
+{
+  "events": [
+    {
+      "title": "High Latency Detected in Payment API",
+      "text": "Payment API latency has exceeded the warning threshold of 500ms. Current average response time: 735ms.\n\nSystem: Payment Processing\nAffected Service: Payment API Gateway\nTransaction Volume: 124/min\nError Rate: 0%\nImpact: Potential delays in payment processing\nSLA Status: At Risk (99.92% current)\nCurrent Response Time: 735ms\nThreshold: 500ms",
+      "tags": [
+        "environment:production", 
+        "alert_type:high_latency", 
+        "severity:warning", 
+        "region:east", 
+        "component:payment_api",
+        "source:application_monitoring"
+      ],
+      "alert_type": "warning",
+      "priority": "normal",
+      "source_type_name": "synthetic",
+      "host": "app-server-04",
+      "device_name": "payment-api-gateway",
+      "aggregation_key": "payment_api_performance"
+    }
+  ]
+}

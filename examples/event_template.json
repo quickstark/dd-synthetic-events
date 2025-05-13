@@ -1,0 +1,21 @@
+{
+  "events": [
+    {
+      "title": "Event Title Here",
+      "text": "Detailed event description",
+      "tags": [
+        "env:prod",
+        "service:api",
+        "version:1.2.3",
+        "source:synthetic",
+        "incident:id-123"
+      ],
+      "alert_type": "info",
+      "priority": "normal",
+      "source_type_name": "synthetic",
+      "host": "server-name",
+      "device_name": "device-name",
+      "aggregation_key": "group-key"
+    }
+  ]
+}
