@@ -1,8 +1,8 @@
 {
   "events": [
     {
-      "title": "CRITICAL: Host 'tmadc-user-sw11a' is DOWN",
-      "text": "Nagios HostEvent: TMADC-USER-SW11A is CRITICAL - 10.67.40.10: Host unreachable @ 192.168.254.221. rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-user-sw11a' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-USER-SW11A is CRITICAL - 10.x.x.x: Host unreachable @ 192.168.x.x. rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -10,17 +10,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-user-sw11a",
-        "host:tmadc-user-sw11a"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-user-sw11a",
+        "host:datacenter-user-sw11a"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-user-sw11a"
+      "host": "datacenter-user-sw11a"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-vg204-2' is DOWN",
-      "text": "Nagios HostEvent: TMADC-VG204-2 is CRITICAL - 10.67.44.212: rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-vg204-2' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-VG204-2 is CRITICAL - 10.x.x.x: rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -28,17 +28,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-vg204-2",
-        "host:tmadc-vg204-2"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-vg204-2",
+        "host:datacenter-vg204-2"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-vg204-2"
+      "host": "datacenter-vg204-2"
     },
     {
-      "title": "CRITICAL: This network device TMADC-USER-SW11A.toyota.com is unreachable from controller.",
-      "text": "Summary: This network device TMADC-USER-SW11A.toyota.com is unreachable from controller. The device role is ACCESS\nTimestamp: 2025-02-21T16:04:44.302Z\nSource: Cisco DNA Center ndp\nDetails: {\"ciscoDnaEventLink\": \"https://tmna-dnac.toyota.com/dna/assurance/issueDetails?issueId=5e40c5ba-3f0e-477f-9179-9230014c8eaf\", \"deviceIdentifier\": \"10.67.40.10\", \"dnacIP\": \"tmna-dnac.toyota.com\", \"eventId\": \"NETWORK-NON-FABRIC_WIRED-1-200\", \"issueCategory\": \"Availability\", \"issuePriority\": \"P1\", \"issueStatus\": \"active\"}",
+      "title": "CRITICAL: This network device DATACENTER-USER-SW11A.example.com is unreachable from controller.",
+      "text": "Summary: This network device DATACENTER-USER-SW11A.example.com is unreachable from controller. The device role is ACCESS\nTimestamp: 2025-02-21T16:04:44.302Z\nSource: Cisco DNA Center ndp\nDetails: {\"ciscoDnaEventLink\": \"https://dnac.example.com/dna/assurance/issueDetails?issueId=5e40c5ba-3f0e-477f-9179-9230014c8eaf\", \"deviceIdentifier\": \"10.x.x.x\", \"dnacIP\": \"dnac.example.com\", \"eventId\": \"NETWORK-NON-FABRIC_WIRED-1-200\", \"issueCategory\": \"Availability\", \"issuePriority\": \"P1\", \"issueStatus\": \"active\"}",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -48,15 +48,15 @@
         "issue_category:Availability",
         "issue_priority:P1",
         "issue_status:active",
-        "host:TMADC-USER-SW11A.toyota.com"
+        "host:DATACENTER-USER-SW11A.example.com"
       ],
       "aggregation_key": "",
       "source_type_name": "cisco_dna",
-      "host": "TMADC-USER-SW11A.toyota.com"
+      "host": "DATACENTER-USER-SW11A.example.com"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-core-sw10a' is DOWN",
-      "text": "Nagios HostEvent: TMADC-CORE-SW10A is CRITICAL - 10.67.253.34: rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-core-sw10a' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-CORE-SW10A is CRITICAL - 10.x.x.x: rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -64,17 +64,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-core-sw10a",
-        "host:tmadc-core-sw10a"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-core-sw10a",
+        "host:datacenter-core-sw10a"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-core-sw10a"
+      "host": "datacenter-core-sw10a"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-4431-1v' is DOWN",
-      "text": "Nagios HostEvent: TMADC-4431-1V is CRITICAL - 10.67.44.210: Host unreachable @ 10.52.253.9. rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-4431-1v' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-4431-1V is CRITICAL - 10.x.x.x: Host unreachable @ 10.x.x.x. rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -82,17 +82,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-4431-1v",
-        "host:tmadc-4431-1v"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-4431-1v",
+        "host:datacenter-4431-1v"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-4431-1v"
+      "host": "datacenter-4431-1v"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-fw-red' is DOWN",
-      "text": "Nagios HostEvent: TMADC-FW-RED is CRITICAL - 10.67.41.243: rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-fw-red' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-FW-RED is CRITICAL - 10.x.x.x: rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -100,17 +100,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-fw-red",
-        "host:tmadc-fw-red"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-fw-red",
+        "host:datacenter-fw-red"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-fw-red"
+      "host": "datacenter-fw-red"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-vg204-1' is DOWN",
-      "text": "Nagios HostEvent: TMADC-VG204-1 is CRITICAL - 10.67.44.211: Host unreachable @ 10.52.253.9. rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-vg204-1' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-VG204-1 is CRITICAL - 10.x.x.x: Host unreachable @ 10.x.x.x. rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -118,17 +118,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-vg204-1",
-        "host:tmadc-vg204-1"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-vg204-1",
+        "host:datacenter-vg204-1"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-vg204-1"
+      "host": "datacenter-vg204-1"
     },
     {
-      "title": "CRITICAL: Host 'tmadc-nrtsdw10a' is DOWN",
-      "text": "Nagios HostEvent: TMADC-NRTSDW10A is CRITICAL - 10.67.253.69: rta nan, lost 100%",
+      "title": "CRITICAL: Host 'datacenter-nrtsdw10a' is DOWN",
+      "text": "Nagios HostEvent: DATACENTER-NRTSDW10A is CRITICAL - 10.x.x.x: rta nan, lost 100%",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -136,17 +136,17 @@
         "event_type:trigger",
         "source:nagios",
         "category:Network",
-        "queue:Ignio_AI_Ops",
-        "incident_key:event_source=host;host_name=tmadc-nrtsdw10a",
-        "host:tmadc-nrtsdw10a"
+        "queue:AI_Ops",
+        "incident_key:event_source=host;host_name=datacenter-nrtsdw10a",
+        "host:datacenter-nrtsdw10a"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios",
-      "host": "tmadc-nrtsdw10a"
+      "host": "datacenter-nrtsdw10a"
     },
     {
-      "title": "CRITICAL: Nagios TrapEvent: Critical - BGP Peer 10.40.204.210 connection idle on host 10.52.112.101",
-      "text": "Nagios TrapEvent: Critical - BGP Peer 10.40.204.210 connection idle on host 10.52.112.101\nTime: 2025-02-22 10:03:14\nDetails: {\"HOSTNAME\": \"10.52.112.101\", \"HOSTSTATE\": \"ProblemTrap\", \"category\": \"Network\", \"impact\": \"4\", \"queue\": \"OPS Network Operations\", \"statettype\": \"HARD\", \"urgency\": \"4\"}",
+      "title": "CRITICAL: Nagios TrapEvent: Critical - BGP Peer 10.x.x.x connection idle on host 10.x.x.x",
+      "text": "Nagios TrapEvent: Critical - BGP Peer 10.x.x.x connection idle on host 10.x.x.x\nTime: 2025-02-22 10:03:14\nDetails: {\"HOSTNAME\": \"10.x.x.x\", \"HOSTSTATE\": \"ProblemTrap\", \"category\": \"Network\", \"impact\": \"4\", \"queue\": \"Network Operations\", \"statettype\": \"HARD\", \"urgency\": \"4\"}",
       "alert_type": "error",
       "priority": "normal",
       "tags": [
@@ -154,15 +154,15 @@
         "event_type:trigger",
         "source:nagios_trap",
         "category:Network",
-        "queue:OPS_Network_Operations",
-        "incident_key:event_source=host;host_name=10.52.112.101",
-        "host:10.52.112.101",
-        "peer:10.40.204.210",
+        "queue:Network_Operations",
+        "incident_key:event_source=host;host_name=10.x.x.x",
+        "host:10.x.x.x",
+        "peer:10.x.x.x",
         "alert:bgp_peer_idle"
       ],
       "aggregation_key": "",
       "source_type_name": "nagios_trap",
-      "host": "10.52.112.101"
+      "host": "10.x.x.x"
     }
   ]
 }
