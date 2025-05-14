@@ -10,7 +10,7 @@ This directory contains example event definitions and templates for the Datadog 
 
 The `scenarios` directory contains complete examples that demonstrate different use cases:
 
-- **Scenario 1**: Cisco DNA Center Network Device Unreachable alert
+- **Scenario 1**: Network Device Unreachable alert
   - Demonstrates submitting the same event via API and email
 
 ## Running Examples

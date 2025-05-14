@@ -1,285 +1,205 @@
 # Datadog Synthetic Events
 
-A tool for simulating events in Datadog for testing and demonstration purposes.
+A tool for simulating and sending synthetic events to Datadog via both API and email for testing and demonstration purposes.
 
-## Requirements
+## Overview
 
-- Docker
-- Datadog API key (and optionally App key)
+This project allows you to:
+1. Generate synthetic monitoring events from predefined scenarios
+2. Send events to Datadog via direct API calls
+3. Send events via email to be parsed by Datadog's email integration
+4. Simulate different alert patterns and test Datadog's processing capabilities
 
-## Quick Start
+## Prerequisites
+
+- Python 3.8+
+- Datadog API and APP keys
+- SendGrid API key (for email functionality)
+- Docker (optional, for containerized execution)
+
+## Installation
+
+### Local Setup
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/datadog-synthetic-events.git
+   cd datadog-synthetic-events
+   ```
+
+2. Create a virtual environment and install dependencies:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables:
+   ```
+   export DD_API_KEY="your_datadog_api_key"
+   export DD_APP_KEY="your_datadog_app_key"
+   export SENDGRID_API_KEY="your_sendgrid_api_key"
+   export EMAIL_TO="destination_email@example.com"
+   export EMAIL_FROM="source_email@example.com"
+   ```
+
+   Alternatively, copy the `set_datadog_env.sh` template and fill in your keys:
+   ```
+   cp set_datadog_env.sh.template set_datadog_env.sh
+   # Edit set_datadog_env.sh with your keys
+   source set_datadog_env.sh
+   ```
+
+### Docker Setup
 
 1. Build the Docker image:
+   ```
+   docker build -t datadog-synthetic-events .
+   ```
 
-```bash
-docker build -t datadog-events .
-```
+2. Run the container with environment variables:
+   ```
+   docker run -e DD_API_KEY="your_datadog_api_key" \
+              -e DD_APP_KEY="your_datadog_app_key" \
+              -e SENDGRID_API_KEY="your_sendgrid_api_key" \
+              -e EMAIL_TO="destination_email@example.com" \
+              -e EMAIL_FROM="source_email@example.com" \
+              datadog-synthetic-events
+   ```
 
-2. Run with your Datadog API key:
+## Usage
 
-```bash
-docker run -e DD_API_KEY=your_api_key_here datadog-events test
-```
+### Running the Simulator
 
-If you don't provide an API key, you'll be prompted to enter one interactively when using in interactive mode (`-it`).
-
-## Environment Variables
-
-The Docker image has placeholders for these environment variables:
-
-- `DD_API_KEY` (required): Your Datadog API key
-- `DD_APP_KEY` (optional): Your Datadog Application key
-- `DD_SITE` (optional): Your Datadog site (defaults to "api.datadoghq.com")
-  - Standard value for most users: "api.datadoghq.com"
-  - EU customers: "api.datadoghq.eu"
-  - Gov cloud: "api.ddog-gov.com"
-- `SENDGRID_API_KEY` (required for email features): Your SendGrid API key
-- `DD_EMAIL_ADDRESS` (optional): Datadog email address for email-to-event conversion (defaults to "event-8l2d0xg2@dtdg.co")
-
-You should provide these values when running the container with `-e`:
-
-```bash
-docker run -e DD_API_KEY=your_api_key_here -e DD_SITE=api.datadoghq.eu datadog-events test
-```
-
-## Command Line Interface
+Use the `run.sh` script to execute the simulator:
 
 ```
-Commands:
-  create         Create and send a custom event (interactive)
-  file           Send events from a JSON file
-  stdin          Read events from stdin (JSON format)
-  test           Send a single test event to Datadog
-  email          Send simulated email alerts (requires SendGrid API key)
-  scenario       Run a complete scenario (both API and email events)
-                Flags:
-                --logs-only: Process only logs (skip API and email events)
-                --skip-api-events: Skip processing API events
-                --skip-email-events: Skip processing email events
-  send_email_file Send a saved email file directly to Datadog
-
-Options:
-  --interval FLOAT      Interval between events in seconds
-  --api-key TEXT        Datadog API key (can also use DD_API_KEY env var)
-  --app-key TEXT        Datadog application key (can also use DD_APP_KEY env var)
-  --site TEXT           Datadog site (can also use DD_SITE env var)
-  --debug / --no-debug  Enable debug output for troubleshooting
-  --help                Show this message and exit
+./run.sh [scenario_name] [--api-only] [--email-only]
 ```
 
-## Usage Examples
+- `scenario_name`: Name of the scenario folder in `examples/scenarios/` (defaults to "scenario1" if not specified)
+- `--api-only`: Only send events via the Datadog API
+- `--email-only`: Only send events via email
 
-### Send a test event
-
-```bash
-docker run -e DD_API_KEY=your_api_key_here datadog-events test
+Example:
+```
+./run.sh scenario2 --email-only
 ```
 
-### Create a custom event interactively
+### Creating Custom Scenarios
 
-```bash
-docker run -it datadog-events create
-# You'll be prompted for API key (if not provided), event title, and text
+Scenarios are defined in the `examples/scenarios/` directory. Each scenario should contain:
+
+1. `api_events.json` - Events to be sent directly via Datadog API
+2. `email_events.json` - Event templates for email sending
+3. `email_logs.json` - Simulated log events to be sent via email
+
+Example scenario file structure:
+```
+examples/scenarios/my_scenario/
+  ├── api_events.json
+  ├── email_events.json
+  └── email_logs.json
 ```
 
-### Send events from a file
-
-```bash
-docker run -e DD_API_KEY=your_api_key_here -v $(pwd):/app datadog-events file examples/batch_events.json
-```
-
-### Send events from stdin
-
-```bash
-cat examples/batch_events.json | docker run -e DD_API_KEY=your_api_key_here -i datadog-events stdin
-```
-
-### Send events with a delay between them
-
-```bash
-docker run -e DD_API_KEY=your_api_key_here -v $(pwd):/app datadog-events --interval 5 file examples/batch_events.yaml
-```
-
-### Troubleshooting API issues
-
-If you're having trouble connecting to the Datadog API, use the debug flag:
-
-```bash
-docker run -e DD_API_KEY=your_api_key_here datadog-events --debug test
-```
-
-## Simplified Usage with run.sh
-
-For convenience, a run.sh script is provided that handles Docker commands:
-
-```bash
-# First, export your API key (optional - will prompt if not set)
-export DD_API_KEY=your_api_key_here
-
-# For email features, export your SendGrid API key
-export SENDGRID_API_KEY=your_sendgrid_api_key
-
-# Optionally, set your Datadog site if not using US site
-export DD_SITE=api.datadoghq.eu
-
-# Build/rebuild options
-./run.sh --rebuild         # Delete existing image and rebuild it
-./run.sh --force-rebuild   # Rebuild image with --no-cache
-
-# Send a test event
-./run.sh test
-
-# Create an event interactively
-./run.sh create
-
-# Send events from a file with 2-second intervals
-./run.sh --interval 2 file examples/event_template.json
-
-# Run a complete scenario (API and email events)
-./run.sh scenario --scenario-dir examples/scenarios/scenario1
-
-# Debug mode for troubleshooting
-./run.sh --debug test
-```
-
-## Event Format
-
-Events are specified in JSON format. All available fields are documented in the example templates:
-
-- [JSON Template](examples/event_template.json) 
-
-Here's a basic example:
+#### API Events Format
 
 ```json
 {
   "events": [
     {
-      "title": "Event Title",
-      "text": "Detailed description of the event",
-      "tags": ["tag1:value1", "tag2:value2", "source:synthetic"],
-      "alert_type": "info",
-      "priority": "normal",
-      "source_type_name": "synthetic",
-      "host": "hostname",
-      "device_name": "device",
-      "aggregation_key": "group_events"
+      "title": "Event title",
+      "text": "Event description and details",
+      "alert_type": "error|warning|info|success",
+      "source_type_name": "my_apps",
+      "tags": ["key1:value1", "key2:value2"]
     }
   ]
 }
 ```
 
-## Available Event Properties
-
-| Property | Required | Description | Example Values |
-|----------|----------|-------------|----------------|
-| title | Yes | Short event title | "API Service Down" |
-| text | Yes | Detailed event description | "The payment API is returning 500 errors" |
-| tags | No | List of tags for filtering | ["env:prod", "service:api"] |
-| alert_type | No | Event severity | "info", "warning", "error", "success" |
-| priority | No | Event priority | "normal", "low" |
-| source_type_name | No | Custom source name (SOURCE field) | "synthetic" |
-| host | No | Host that generated the event | "web-server-01" |
-| device_name | No | Device that generated the event | "load-balancer-02" |
-| aggregation_key | No | Key to group related events | "deployment-123" |
-
-## Email Integration
-
-The tool supports two ways of handling email alert content:
-
-1. **Email-to-Event Conversion**: Simulating email alerts (like those from monitoring systems) and converting them to Datadog events
-2. **Email-to-Log Conversion**: Processing email content as Datadog logs for better parsing in Log Management
-
-Both features require a SendGrid API key for the email sending portion.
-
-### Environment Variables for Email
-
-- `SENDGRID_API_KEY` (required for email features): Your SendGrid API key
-- `DD_EMAIL_ADDRESS` (optional): Custom Datadog email address for email-to-event conversion
-
-### Email Templates and Scenarios
-
-Templates and scenarios are defined in JSON format:
-
-- Email-to-Event templates: `examples/scenarios/*/email_events.json`
-- Email-to-Log templates: `examples/scenarios/*/email_logs.json` 
-- API events: `examples/scenarios/*/api_events.json`
-
-### Sending Email Alerts
-
-```bash
-# Export your SendGrid API key and Datadog email address
-export SENDGRID_API_KEY=your_sendgrid_api_key
-export DD_EMAIL_ADDRESS=your-integration-key@dtdg.co
-
-# Send a single email alert
-./run.sh email --template examples/scenarios/scenario1/email_events.json
-
-# Send a saved email file directly to Datadog
-./run.sh send_email_file ./data/datadog_email_20250508_161846.eml
-```
-
-### Running Complete Scenarios
-
-The scenario command lets you run both API events and email integrations from a scenario directory:
-
-```bash
-# Export your API keys
-export DD_API_KEY=your_datadog_api_key
-export SENDGRID_API_KEY=your_sendgrid_api_key
-
-# Run the complete scenario (API events, email alerts, and email logs)
-./run.sh scenario --scenario-dir examples/scenarios/scenario1
-
-# Customize the interval between events
-./run.sh scenario --scenario-dir examples/scenarios/scenario1 --interval 5
-
-# Run only the logs portion of a scenario (skips API events and email events)
-./run.sh scenario --scenario-dir examples/scenarios/scenario1 --logs-only
-
-# Skip only the API events portion
-./run.sh scenario --scenario-dir examples/scenarios/scenario1 --skip-api-events
-
-# Skip only the email events portion
-./run.sh scenario --scenario-dir examples/scenarios/scenario1 --skip-email-events
-```
-
-### Log Format
-
-When using email content as logs (via `email_logs.json`), the following format is used:
+#### Email Events Format
 
 ```json
 {
   "events": [
     {
-      "timestamp": "2025-02-21T10:14:57",
-      "source": "toyota_monitoring_system",
-      "service": "infrastructure_monitoring",
-      "hostname": "dc2-uvadcep01",
-      "tags": ["environment:production", "alert_type:communication_lost", "severity:critical"],
-      "content": "Alert Title: TMA Washington DC 11th Floor IDF..."
+      "subject": "Email subject line",
+      "body": "Email body text with alert details",
+      "tags": ["key1:value1", "key2:value2"]
     }
   ]
 }
 ```
 
-| Property | Description | Example Values |
-|----------|-------------|----------------|
-| timestamp | Log timestamp (ISO 8601 format) | "2025-02-21T10:14:57" |
-| source | Source of the log (ddsource) | "toyota_monitoring_system" |
-| service | Service name (service) | "infrastructure_monitoring" |
-| hostname | Host generating the log | "dc2-uvadcep01" |
-| tags | Array of tags for filtering | ["environment:production"] |
-| content | The log message content | "Alert Title: TMA Washington..." |
+#### Email Logs Format
 
-### Pre-configured Scenarios
+```json
+{
+  "events": [
+    {
+      "source": "source_name",
+      "service": "service_name",
+      "hostname": "host_name",
+      "tags": ["key1:value1", "key2:value2"],
+      "content": "Log content with structured alert information"
+    }
+  ]
+}
+```
 
-The tool comes with pre-configured scenarios that demonstrate different use cases:
+## Datadog Configuration
 
-- **Scenario 1**: NetBotz communication lost alert
-  - Demonstrates API events, email alerts, and email logs for the same event
-- **Scenario 2**: Application performance monitoring alert
-  - Shows a high latency alert from a payment processing API
-  - Provides examples of warning-level alerts with performance metrics
-  - Includes different tag taxonomies for application monitoring
+### Email Integration Setup
 
-You can use these as a starting point for creating your own scenarios.
+1. In Datadog, navigate to **Integrations** > **Integrations**
+2. Find and install the **Email** integration
+3. Configure a unique email address for receiving logs
+4. Set this email as the destination in your environment variables (`EMAIL_TO`)
+
+### Pipeline Configuration
+
+To properly parse the email alerts generated by this tool, set up the following pipeline in Datadog:
+
+1. Navigate to **Logs** > **Configuration** > **Pipelines**
+2. Create a new pipeline for email alerts with a filter like `source:email`
+3. Add a Grok Parser processor with the following rule:
+
+```
+rule_name .*Alert Title:\s*%{data:alert_title}\s*Alert Description:\s*%{data:alert_description}\s*Alert Type:\s*%{data:alert_type}\s*Severity:\s*%{data:severity}\s*Alert Level:\s*%{data:alert_level}\s*Device:\s*%{data:device}\s*Time Detected:\s*%{data:time_detected}\s*Notification Time:\s*%{data:notification_time}\s*Notification Policy:\s*%{data:notification_policy}\s*Action Name:\s*%{data:action_name}\s*User URL:\s*%{data:user_url}\s*Location:\s*%{data:location}\s*Primary Contact:\s*%{data:primary_contact}\s*Notes:\s*%{data:notes}\s*Alert ID:\s*%{data:alert_id}\s*Version:\s*%{data:version}
+```
+
+This parser extracts structured attributes from the alert emails.
+
+### Location Normalization
+
+To enhance correlation capabilities:
+
+1. Set up an IP Lookup processor to set a normalized location
+2. Add a Category Processor to match and normalize the Location attribute
+
+### Correlation Configuration
+
+To correlate events across different sources:
+
+1. Go to **Logs** > **Configuration** > **Correlations**
+2. Create a new correlation with a relevant name (e.g., "Alert Correlation")
+3. Define correlation criteria using attributes extracted by the pipeline:
+   - Primary identifier: `alert_id`
+   - Supporting attributes: `alert_title`, `severity`, `location`
+
+This will help group related alerts from different sources (API and email) for better incident management.
+
+## Troubleshooting
+
+- **Events not appearing in Datadog**: Verify your API keys and check that your network allows connections to Datadog's endpoints.
+- **Email not being processed**: Confirm your SendGrid API key is valid and that the destination email is correctly configured in Datadog's email integration.
+- **Pipeline not parsing emails**: Review the Grok rule syntax and test it in Datadog's Pipeline testing tool with a sample of your email content.
+
+## License
+
+[Your License Information]
+
+## Contributing
+
+[Your Contribution Guidelines]
