@@ -37,6 +37,7 @@ original.txt
 .env.local
 *.env.sh
 set_datadog_env.sh
+.cursor
 
 # IDE
 .idea/
