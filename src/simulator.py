@@ -30,8 +30,16 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL_ADDRESS', SENDER_EMAIL_FALLBACK)
 
 # --- Core Email Sending Logic (moved from email_sender.py and adapted) ---
 def _send_datadog_scenario_email(sendgrid_api_key: str, subject: str, body: str, recipient_email: str) -> bool:
-    """
-    Sends a single email for a scenario using SendGrid.
+    """Sends a single email for a scenario using SendGrid.
+
+    Args:
+        sendgrid_api_key: The SendGrid API key.
+        subject: The subject of the email.
+        body: The plain text content of the email.
+        recipient_email: The email address of the recipient.
+
+    Returns:
+        True if the email was sent successfully, False otherwise.
     """
     if not sendgrid_api_key:
         logger.error("SendGrid API key not provided to _send_datadog_scenario_email, cannot send email.")
@@ -67,8 +75,59 @@ def _send_datadog_scenario_email(sendgrid_api_key: str, subject: str, body: str,
         print(f"✗ Exception while sending email to {recipient_email}. Check logs.")
         return False
 
+def _handle_datadog_api_response(ctx, result):
+    """Handles the response from a Datadog API call.
+
+    Prints relevant information, checks for errors, and exits if necessary.
+
+    Args:
+        ctx: The Click context object.
+        result (dict): The response dictionary from the Datadog API.
+    """
+    if not result:
+        click.echo("Failed to get a response from Datadog API.", err=True)
+        ctx.exit(1)
+
+    if ctx.obj.get('debug', False) or 'errors' in result:
+        click.echo(f"Full response: {json.dumps(result, indent=2)}")
+    else:
+        click.echo(f"Response structure: {list(result.keys())}")
+
+    if 'errors' in result:
+        click.echo(f"Error from Datadog API: {result['errors']}", err=True)
+        ctx.exit(1)
+
+    event_id = result.get('id')
+    event_url = None
+
+    if 'event' in result and isinstance(result['event'], dict):
+        event_data = result['event']
+        event_id = event_data.get('id', event_id)
+        event_url = event_data.get('url')
+    
+    if not event_id and 'status' in result:
+        event_id = f"Status: {result['status']}"
+    
+    event_id = event_id or "unknown" # Default to unknown if still not set
+
+    click.echo(f"Event action successful (ID: {event_id})")
+    if event_url:
+        click.echo(f"View event at: {event_url}")
+
 def send_event(event, dd_options):
-    """Send a single event to Datadog"""
+    """Sends a single event to Datadog.
+
+    Args:
+        event (dict): A dictionary representing the event to send.
+                      Expected keys include 'title', 'text', 'tags', 'alert_type',
+                      'priority', 'host', 'device_name', 'aggregation_key',
+                      and 'source_type_name'.
+        dd_options (dict): A dictionary containing Datadog API options,
+                           including 'api_key', 'app_key', and 'api_host'.
+
+    Returns:
+        dict: The API response from Datadog if successful, None otherwise.
+    """
     try:
         # Initialize with provided options
         initialize(**dd_options)
@@ -125,7 +184,17 @@ def send_event(event, dd_options):
         return None
 
 def process_batch(events, dd_options, interval=0):
-    """Process a batch of events"""
+    """Processes a batch of events and sends them to Datadog.
+
+    Args:
+        events (list): A list of event dictionaries to send.
+        dd_options (dict): Datadog API options.
+        interval (float, optional): Time in seconds to wait between sending
+                                     each event. Defaults to 0.
+
+    Returns:
+        list: A list of API responses from Datadog for each event.
+    """
     results = []
     
     with click.progressbar(events, label='Sending events') as progress_events:
@@ -144,7 +213,22 @@ def process_batch(events, dd_options, interval=0):
     return results
 
 def load_events_from_file(file_path):
-    """Load events from a JSON or YAML file"""
+    """Loads events from a JSON or YAML file.
+
+    The file can be a list of event objects or an object with an 'events' key
+    containing a list of event objects.
+
+    Args:
+        file_path (str): The path to the JSON or YAML file.
+
+    Returns:
+        list: A list of event dictionaries.
+
+    Raises:
+        click.UsageError: If the file format is invalid, or if there's an
+                          error parsing or loading the file.
+        click.FileError: If the file is not found.
+    """
     try:
         with open(file_path, 'r') as f:
             if file_path.lower().endswith('.yaml') or file_path.lower().endswith('.yml'):
@@ -167,7 +251,18 @@ def load_events_from_file(file_path):
         raise click.UsageError(f"Error loading events from {file_path}: {e}")
 
 def load_events_from_stdin():
-    """Load events from stdin (JSON or YAML format)"""
+    """Loads events from stdin (JSON or YAML format).
+
+    The input can be a list of event objects or an object with an 'events' key
+    containing a list of event objects.
+
+    Returns:
+        list: A list of event dictionaries.
+
+    Raises:
+        click.UsageError: If the input format is invalid or if there's an
+                          error parsing the input.
+    """
     try:
         content = sys.stdin.read()
         
@@ -192,7 +287,15 @@ def load_events_from_stdin():
         raise click.UsageError(f"Error loading events from stdin: {e}")
 
 def process_tags_input(tags_input):
-    """Process tags input into a list of tags"""
+    """Processes a comma-separated string of tags into a list of tags.
+
+    Args:
+        tags_input (str): A comma-separated string of tags (e.g., "key1:value1,key2:value2").
+
+    Returns:
+        list: A list of cleaned tag strings. Returns an empty list if
+              tags_input is None or empty.
+    """
     if not tags_input:
         return []
         
@@ -212,7 +315,11 @@ def process_tags_input(tags_input):
 @click.option('--debug/--no-debug', default=False, help='Enable debug output for troubleshooting')
 @click.pass_context
 def cli(ctx, interval, api_key, app_key, site, debug):
-    """Tool for sending synthetic events to Datadog for testing and simulation purposes"""
+    """A command-line tool for sending synthetic events to Datadog.
+
+    This tool allows for sending individual events, batches of events from files
+    or stdin, and running predefined scenarios.
+    """
     ctx.ensure_object(dict)
     
     # Store options in click context
@@ -239,7 +346,11 @@ def cli(ctx, interval, api_key, app_key, site, debug):
 @cli.command()
 @click.pass_context
 def test(ctx):
-    """Send a single test event to Datadog"""
+    """Sends a single pre-defined test event to Datadog.
+
+    This command is useful for quickly verifying the connection and
+    configuration with Datadog.
+    """
     # Create a test event
     event = {
         'title': "Test Event",
@@ -291,7 +402,12 @@ def test(ctx):
 @click.argument('file', type=click.Path(exists=True, readable=True))
 @click.pass_context
 def file(ctx, file):
-    """Send events from a JSON or YAML file"""
+    """Sends events to Datadog from a specified JSON or YAML file.
+
+    Args:
+        ctx: The Click context object.
+        file (str): Path to the file containing events.
+    """
     try:
         events = load_events_from_file(file)
     except (click.FileError, click.UsageError) as e:
@@ -310,7 +426,11 @@ def file(ctx, file):
 @cli.command()
 @click.pass_context
 def stdin(ctx):
-    """Read events from stdin (JSON or YAML format)"""
+    """Sends events to Datadog from stdin (JSON or YAML format).
+
+    Args:
+        ctx: The Click context object.
+    """
     try:
         events = load_events_from_stdin()
     except click.UsageError as e:
@@ -339,7 +459,18 @@ def stdin(ctx):
 @click.option('--host', help='Source host name')
 @click.pass_context
 def create(ctx, title, text, tags, alert_type, priority, source, host):
-    """Create and send a custom event (interactive)"""
+    """Creates and sends a single custom event to Datadog based on user prompts.
+
+    Args:
+        ctx: The Click context object.
+        title (str): Title of the event.
+        text (str): Text body of the event.
+        tags (str): Comma-separated list of tags (e.g., "service:api,env:prod").
+        alert_type (str): Alert type ('info', 'warning', 'error', 'success').
+        priority (str): Event priority ('normal', 'low').
+        source (str): Source name for the event.
+        host (str, optional): Source host name.
+    """
     # Process tags if provided
     tag_list = process_tags_input(tags)
     
@@ -415,16 +546,23 @@ def create(ctx, title, text, tags, alert_type, priority, source, host):
 @click.option('--logs-only', is_flag=True, help='Process only logs files (skips both API and email events).')
 @click.pass_context
 def scenario(ctx, scenario_dir, sendgrid_api_key, email_recipient_override, interval, skip_api_events, skip_email_events, logs_only):
-    """Run a complete scenario (API events, email events, and logs)
-    
-    This command looks for the following files in the scenario directory:
-    - api_events.json: Regular Datadog events
-    - email_events.json: Email events to send via SendGrid
-    - email_logs.json: Logs related to email events
-    - logs.json: General purpose logs to send to Datadog
-    
-    At least one of these files must exist in the scenario directory.
+    """Runs a scenario by processing event files from a specified directory.
+
+    A scenario can include API events, email events, and log submissions.
+    It looks for `api_events.json`, `email_events.json`, and `*.log.json` or `*.log.yaml` files
+    within the `scenario_dir`.
+
+    Args:
+        ctx: The Click context object.
+        scenario_dir (str): Directory containing scenario files.
+        sendgrid_api_key (str, optional): SendGrid API key for email events.
+        email_recipient_override (str, optional): Override recipient email for all email events.
+        interval (float, optional): Interval between sending events. Overrides global interval.
+        skip_api_events (bool): If True, skip processing API events.
+        skip_email_events (bool): If True, skip processing email events.
+        logs_only (bool): If True, process only log files.
     """
+    click.echo(f"\n--- Running Scenario from Directory: {scenario_dir} ---")
     
     # If logs-only is set, skip both API and email events
     if logs_only:
@@ -467,29 +605,18 @@ def scenario(ctx, scenario_dir, sendgrid_api_key, email_recipient_override, inte
         ctx.exit(1)
         
     # Step 1: Process API Events if they exist and not skipped
-    if api_events_exist and not skip_api_events:
-        click.echo(f"Processing API events from: {api_events_path}")
-        logger.info(f"Processing API events from: {api_events_path}")
-        try:
-            events = load_events_from_file(api_events_path)
-            click.echo(f"Loaded {len(events)} API events")
-            logger.info(f"Loaded {len(events)} API events")
-            
-            results = process_batch(events, ctx.obj['dd_options'], scenario_interval)
-            
-            success_count = sum(1 for r in results if r is not None and 'errors' not in r and r.get('status') == 'ok')
-            click.echo(f"API Events Summary: Sent {success_count}/{len(events)} events successfully.\n")
-            logger.info(f"API Events Summary: Sent {success_count}/{len(events)} events successfully.")
-            
-        except Exception as e:
-            click.echo(f"Error processing API events: {e}", err=True)
-            logger.error(f"Error processing API events: {e}", exc_info=True)
-    elif api_events_exist and skip_api_events:
+    if not skip_api_events:
+        _process_api_events_from_scenario(ctx, api_events_path, ctx.obj['dd_options'], scenario_interval)
+    elif api_events_exist and skip_api_events: # Still log if skipped but file exists
         click.echo("Skipping API events as requested.")
-        logger.info("Skipping API events as requested.")
+        logger.info(f"Skipping API events as requested (file found: {api_events_path}).")
     
     # Step 2: Wait a bit between API and email events if both exist
-    if api_events_exist and not skip_api_events and email_events_exist and not skip_email_events and scenario_interval > 0:
+    # Check if API events were processed (not skipped AND file existed) and email events might be processed
+    api_events_were_processed = not skip_api_events and os.path.isfile(api_events_path)
+    potential_email_processing = not skip_email_events and os.path.isfile(email_events_path)
+
+    if api_events_were_processed and potential_email_processing and scenario_interval > 0:
         click.echo(f"Waiting {scenario_interval} seconds before sending email events...")
         time.sleep(scenario_interval)
     
@@ -754,10 +881,18 @@ def scenario(ctx, scenario_dir, sendgrid_api_key, email_recipient_override, inte
 @click.option('--api-key', envvar='SENDGRID_API_KEY', help='SendGrid API key for sending emails')
 @click.pass_context
 def send_email_file(ctx, email_file, dd_email, api_key):
-    """Send a saved email file to Datadog"""
-    import os
-    import sendgrid
-    from sendgrid.helpers.mail import Mail
+    """DEPRECATED: Sends emails defined in a JSON file.
+
+    This command is deprecated. Use the `scenario` command with an `email_events.json`
+    file for more robust email scenario handling.
+
+    Args:
+        ctx: The Click context object.
+        email_file (str): Path to the JSON file containing email definitions.
+        dd_email (str, optional): Recipient email address, overrides file content.
+        api_key (str, optional): SendGrid API key.
+    """
+    logger.warning("The 'send-email-file' command is deprecated. Consider using the 'scenario' command with an 'email_events.json' file.")
     
     # Read the email file content
     with open(email_file, 'r') as f:
@@ -825,8 +960,14 @@ def send_email_file(ctx, email_file, dd_email, api_key):
 @cli.command()
 @click.pass_context
 def test_logs(ctx):
-    """Test sending a log to Datadog"""
-    click.echo("Testing log sending to Datadog...")
+    """Sends a predefined set of test logs to Datadog.
+
+    Useful for verifying the log submission setup.
+
+    Args:
+        ctx: The Click context object.
+    """
+    click.echo("\n--- Sending Test Logs ---")
     
     # Create a test log
     test_log = {
@@ -883,11 +1024,20 @@ def setup_logger():
     return logger
 
 def set_datadog_option_envs(options):
+    """Sets Datadog related environment variables if not already set.
+
+    This is primarily for internal use by other scripts that might call
+    this simulator's functions programmatically.
+
+    Args:
+        options (dict): A dictionary containing Datadog options like
+                        'api_key', 'app_key', 'api_host'.
+    """
     if 'host' in options:
         os.environ['DATADOG_HOST'] = options['host']
-    if 'api_key' in options:
+    if 'api_key' in options and not os.environ.get('DATADOG_API_KEY'):
         os.environ['DATADOG_API_KEY'] = options['api_key']
-    if 'app_key' in options:
+    if 'app_key' in options and not os.environ.get('DATADOG_APP_KEY'):
         os.environ['DATADOG_APP_KEY'] = options['app_key']
 
 def init_datadog(options):
@@ -899,94 +1049,24 @@ def init_datadog(options):
     )
 
 def send_log(log_data, log_args):
-    """Send log data to Datadog."""
-    # Determine the source with proper precedence
-    source = log_data.get("source") or log_data.get("ddsource")
-    if not source:
-        source = log_args.get("source", "synthetic-test")
-    
-    # --- Enhanced Message Handling ---
-    _final_message = None
-    _message_candidate = log_data.get("message")
+    """Sends a single log entry or a batch of log entries to Datadog HTTP intake.
 
-    valid_candidate_found = False
-    # Check if _message_candidate is a non-empty dict/list or a non-empty/whitespace string
-    if isinstance(_message_candidate, (dict, list)):
-        if _message_candidate:  # Evaluates to True if non-empty
-            _final_message = _message_candidate
-            valid_candidate_found = True
-    elif isinstance(_message_candidate, str) and _message_candidate.strip():
-        _final_message = _message_candidate.strip()
-        valid_candidate_found = True
+    Args:
+        log_data (dict or list): A single log entry (dict) or a list of log entries (list of dicts).
+                                 Each log entry should be a dictionary.
+        log_args (argparse.Namespace or dict): Arguments containing Datadog configuration
+                                               (api_key, site) and log metadata (source, service).
+                                               Can be an argparse Namespace or a dictionary.
 
-    if not valid_candidate_found:
-        # Primary "message" was not valid or not present, try "content"
-        _content_candidate = log_data.get("content")
-        if isinstance(_content_candidate, (dict, list)):
-            if _content_candidate: # Evaluates to True if non-empty
-                _final_message = _content_candidate
-                valid_candidate_found = True
-        elif isinstance(_content_candidate, str) and _content_candidate.strip():
-            _final_message = _content_candidate.strip()
-            valid_candidate_found = True
-            
-    if not valid_candidate_found:
-        # Both "message" and "content" were invalid, missing, or empty. Create a default.
-        logger.warning(
-            f"Log 'message' and 'content' for source '{source}' were missing, empty, or invalid. "
-            f"Original log_data: {json.dumps(log_data)}. Constructing a default message."
-        )
-        # Create a string representation of the log_data, excluding common top-level keys
-        relevant_data = {
-            k: v for k, v in log_data.items() 
-            if k not in ['message', 'content', 'source', 'ddsource', 'tags', 'ddtags', 'hostname', 'service', 'timestamp']
-        }
-        if relevant_data:
-            _final_message = f"Log from {source} (auto-generated message): {json.dumps(relevant_data)}"
-        else:
-            _final_message = f"Log event from source '{source}' (auto-generated message, no specific content found)."
-    # --- End of Enhanced Message Handling ---
+    Returns:
+        requests.Response or None: The response from the Datadog API if the request was made,
+                                   otherwise None.
 
-    # --- Robust Tags Handling ---
-    ddtags_str = log_data.get("ddtags") # Prefer ddtags if it's a string
-    if not isinstance(ddtags_str, str): # If ddtags is not a string (or None)
-        if isinstance(ddtags_str, list): # If ddtags was a list, join it
-             logger.info(f"ddtags for source '{source}' was a list, converting to string: {ddtags_str}")
-             ddtags_str = ",".join(map(str, ddtags_str))
-        else: # ddtags was None or some other type, fall back to 'tags'
-            tags_input = log_data.get("tags", []) # Default to empty list
-            processed_tags_list = []
-            if isinstance(tags_input, list):
-                processed_tags_list = [str(tag).strip() for tag in tags_input if str(tag).strip()]
-            elif isinstance(tags_input, str): # Handle if tags is a comma-separated string
-                processed_tags_list = [t.strip() for t in tags_input.split(',') if t.strip()]
-                if tags_input and not processed_tags_list: # e.g. tags was just "," or "   "
-                     logger.warning(f"Tags field for source '{source}' was a string ('{tags_input}') but resulted in no valid tags.")
-                elif tags_input: # Log if we actually converted a string
-                     logger.info(f"Converted tags string '{tags_input}' to list for source '{source}'.")
-            else: # Not a list or string
-                if tags_input: # It was something unexpected and not empty/None
-                    logger.warning(f"Tags field for source '{source}' is an unexpected type: {type(tags_input)} with value '{tags_input}'. Using empty tags.")
-            ddtags_str = ",".join(processed_tags_list)
-    # --- End of Robust Tags Handling ---
-            
-    log_entry = {
-        "message": _final_message,
-        "ddsource": source,
-        "ddtags": ddtags_str,
-        "hostname": log_data.get("hostname", ""), # Keeps original default of empty string if not present
-        "service": log_data.get("service", log_args.get("service", "synthetic-events"))
-    }
-    
-    logger.info(f"Sending log (first 500 chars): {json.dumps(log_entry)[:500]}")
-    
-    # Get API key from args first, then environment variables
+    Raises:
+        ValueError: If `log_data` is not a dict or a list of dicts.
+    """
+    # Ensure log_args can be accessed with .get or ['key']
     api_key = log_args.get('api_key') or os.environ.get('DATADOG_API_KEY') or os.environ.get('DD_API_KEY')
-    
-    if not api_key:
-        raise ValueError("No Datadog API key found. Set DATADOG_API_KEY or DD_API_KEY environment variable.")
-    
-    # Get site from args first, then environment variables, then default
     site = log_args.get('site') or os.environ.get('DD_SITE', 'datadoghq.com')
     
     # Handle site parameter to extract just the domain part
@@ -999,7 +1079,7 @@ def send_log(log_data, log_args):
     # Construct the URL based on site
     url = f"https://http-intake.logs.{site}/api/v2/logs"
     logger.info(f"Sending log to URL: {url}")
-    logger.info(f"Using source: {source}")
+    logger.info(f"Using source: {log_args.get('source', 'synthetic-test')}")
     
     # Set headers
     headers = {
@@ -1008,7 +1088,7 @@ def send_log(log_data, log_args):
     }
     
     # Create a list containing the log entry as required by the API
-    payload = [log_entry]
+    payload = [log_data]
     
     # Log the payload for debugging
     logger.info(f"Log payload: {json.dumps(payload)}")
@@ -1049,11 +1129,48 @@ def get_scenario_file_path(scenario_name, file_name):
     return os.path.join(scenario_dir, file_name)
 
 def parse_json_file(file_path):
-    with open(file_path, 'r') as f:
-        return json.load(f)
+    """Parses a JSON file and returns its content.
+
+    Args:
+        file_path (str): The path to the JSON file.
+
+    Returns:
+        dict or list: The parsed JSON content.
+
+    Raises:
+        SystemExit: If the file is not found or cannot be parsed.
+    """
+    try:
+        with open(file_path, 'r') as f:
+            if file_path.lower().endswith('.yaml') or file_path.lower().endswith('.yml'):
+                content = yaml.safe_load(f)
+            else:  # Default to JSON
+                content = json.load(f)
+            
+            # Check if the file has an 'events' key (array of events)
+            if 'events' in content and isinstance(content['events'], list):
+                return content['events']
+            elif isinstance(content, list):
+                return content
+            else:
+                raise click.UsageError(f"Invalid file format. Expected an array of events or an object with an 'events' array.")
+    except (json.JSONDecodeError, yaml.YAMLError) as e:
+        raise click.UsageError(f"Error parsing {file_path}: {e}")
+    except FileNotFoundError:
+        raise click.FileError(file_path, hint="File not found")
+    except Exception as e:
+        raise click.UsageError(f"Error loading events from {file_path}: {e}")
 
 def run_event_file(file_path, event_args):
-    logger.info(f"Processing events from {file_path}")
+    """DEPRECATED: Runs events from a specified file.
+
+    This function is deprecated. Use the `file` command or `scenario` command.
+
+    Args:
+        file_path (str): Path to the event file.
+        event_args (dict): Arguments for event processing.
+    """
+    print(f"Running event file: {file_path}")
     data = parse_json_file(file_path)
 
     for evt in data['events']:
@@ -1063,35 +1180,17 @@ def run_event_file(file_path, event_args):
         except Exception as e:
             logger.error(f"Failed to send event: {e}")
             raise
-
-def run_log_file(file_path, log_args):
-    """Process log entries from a file and send them to Datadog."""
-    logger.info(f"Processing logs from {file_path}")
-    
-    # Ensure API key is properly passed through
-    api_key = log_args.get('api_key')
-    if api_key:
-        os.environ['DATADOG_API_KEY'] = api_key
-        logger.info(f"Using API key from log_args")
-    
-    # Ensure site is properly passed through
-    site = log_args.get('site')
-    if site:
-        os.environ['DD_SITE'] = site
-        logger.info(f"Using site from log_args: {site}")
-    
-    # Parse the log data from the file
-    data = parse_json_file(file_path)
-
-    for log_data in data['events']:
-        try:
-            result = send_log(log_data, log_args)
-            logger.info(f"Log result: {result}")
-        except Exception as e:
-            logger.error(f"Failed to send log: {e}")
-            raise
+    print(f"Log file processed: {file_path}")
 
 def run_scenario(scenario_name, event_args):
+    """DEPRECATED: Runs a specific scenario by name.
+
+    This function is deprecated. Use the `scenario` command with a directory.
+
+    Args:
+        scenario_name (str): The name of the scenario to run.
+        event_args (dict): Arguments for event processing.
+    """
     # Check for email_events.json
     email_events_path = get_scenario_file_path(scenario_name, 'email_events.json')
     if os.path.exists(email_events_path):
@@ -1129,13 +1228,9 @@ def run_scenario(scenario_name, event_args):
     if os.path.exists(events_path):
         run_event_file(events_path, event_args)
 
-def run_scenarios(scenario_names, event_args, wait=None):
-    for i, scenario_name in enumerate(scenario_names):
-        logger.info(f"Running scenario {i+1}/{len(scenario_names)}: {scenario_name}")
-        run_scenario(scenario_name, event_args)
-
-        if i < len(scenario_names) - 1 and wait is not None:
-            time.sleep(wait)
+    # Ensure that time.sleep is properly handled even if wait is 0 or None
+    if event_args.get('wait', None) is not None:
+        time.sleep(event_args['wait'])
 
 @cli.command()
 @click.argument('file', type=click.Path(exists=True, readable=True))
@@ -1143,17 +1238,28 @@ def run_scenarios(scenario_names, event_args, wait=None):
 @click.option('--service', default='synthetic-events', help='Service name for logs')
 @click.pass_context
 def logs(ctx, file, source, service):
-    """Send logs from a JSON file"""
+    """Sends log entries from a JSON or YAML file to Datadog.
+
+    The file should contain a list of log objects or a single log object.
+    Each log object is a dictionary that will be sent as a log entry.
+
+    Args:
+        ctx: The Click context object.
+        file (str): Path to the JSON or YAML file containing log entries.
+        source (str): Source name for the logs (e.g., 'my-app').
+        service (str): Service name for the logs (e.g., 'backend').
+    """
+    dd_options = ctx.obj['dd_options']
     click.echo(f"Sending logs from file: {file}")
     
     # Get API key and site from context
-    api_key = ctx.obj['dd_options'].get('api_key')
+    api_key = dd_options.get('api_key')
     if not api_key:
         click.echo("No Datadog API key found. Use --api-key or set DD_API_KEY environment variable.", err=True)
         ctx.exit(1)
     
     # Extract site from context
-    site_url = ctx.obj['dd_options'].get('api_host', 'https://api.datadoghq.com')
+    site_url = dd_options.get('api_host', 'https://api.datadoghq.com')
     # Extract the domain part from the API host
     site = site_url.replace('https://', '').replace('http://', '')
     
@@ -1226,6 +1332,149 @@ def logs(ctx, file, source, service):
     except Exception as e:
         click.echo(f"Error processing logs file: {e}", err=True)
         ctx.exit(1)
+
+def _process_api_events_from_scenario(ctx, api_events_path, dd_options, scenario_interval):
+    """Processes API events from a file within a scenario.
+
+    Args:
+        ctx: The Click context object.
+        api_events_path (str): Path to the API events JSON file.
+        dd_options (dict): Datadog API options.
+        scenario_interval (float): Interval between sending events.
+    """
+    if not os.path.isfile(api_events_path):
+        logger.debug(f"API events file not found at {api_events_path}, skipping API event processing.") # Changed to debug
+        return
+
+    click.echo(f"Processing API events from: {api_events_path}")
+    logger.info(f"Processing API events from: {api_events_path}")
+    try:
+        events = load_events_from_file(api_events_path)
+        click.echo(f"Loaded {len(events)} API events")
+        logger.info(f"Loaded {len(events)} API events")
+
+        results = process_batch(events, dd_options, scenario_interval)
+
+        success_count = sum(1 for r in results if r is not None and 'errors' not in r and r.get('status') == 'ok')
+        click.echo(f"API Events Summary: Sent {success_count}/{len(events)} events successfully.\n")
+        logger.info(f"API Events Summary: Sent {success_count}/{len(events)} events successfully.")
+
+    except Exception as e:
+        click.echo(f"Error processing API events from {api_events_path}: {e}", err=True)
+        logger.error(f"Error processing API events from {api_events_path}: {e}", exc_info=True)
+
+def _process_email_events_from_scenario(ctx, email_events_path, sendgrid_api_key_option, email_recipient_override, scenario_interval, logs_only):
+    """Processes email events from a file within a scenario.
+
+    Args:
+        ctx: The Click context object.
+        email_events_path (str): Path to the email events JSON file.
+        sendgrid_api_key_option (str): SendGrid API key from command option.
+        email_recipient_override (str): Email recipient override from command option.
+        scenario_interval (float): Interval between sending emails.
+        logs_only (bool): True if only logs should be processed.
+
+    Returns:
+        bool: True if email events were skipped, False otherwise. This is to inform the main scenario function.
+    """
+    if not os.path.isfile(email_events_path):
+        logger.debug(f"Email events file not found at {email_events_path}, skipping email event processing.")
+        return True # Skipped because file not found
+
+    click.echo(f"Processing email events from: {email_events_path}")
+    logger.info(f"Processing email events from: {email_events_path}")
+
+    current_sendgrid_api_key = sendgrid_api_key_option or os.environ.get('SENDGRID_API_KEY')
+
+    if not current_sendgrid_api_key:
+        click.echo("Error: SendGrid API key is required for email events. "
+                   "Set it via --sendgrid-api-key option or SENDGRID_API_KEY environment variable.", err=True)
+        logger.error("SendGrid API key missing for email events processing.")
+        if not logs_only:
+            ctx.exit(1)
+        else:
+            click.echo("Continuing with logs processing since --logs-only was specified.")
+            return True # Skipped due to missing API key in non-logs-only mode
+    
+    if len(current_sendgrid_api_key) > 10:
+        logger.info(f"Using SendGrid API key for scenario emails: {current_sendgrid_api_key[:4]}...{current_sendgrid_api_key[-4:]}")
+    else:
+        logger.warning("SendGrid API key for scenario emails appears very short or might be invalid.")
+
+    try:
+        with open(email_events_path, 'r') as f:
+            email_scenario_data = json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from email_events file {email_events_path}: {e}")
+        click.echo(f"Error: Invalid JSON in {email_events_path}.", err=True)
+        ctx.exit(1)
+    except Exception as e:
+        logger.error(f"Error reading email_events file {email_events_path}: {e}")
+        click.echo(f"Error: Could not read email_events file {email_events_path}.", err=True)
+        ctx.exit(1)
+
+    emails_to_process = email_scenario_data.get('emails')
+    if not isinstance(emails_to_process, list):
+        logger.error(f"Email scenario file {email_events_path} must contain an 'emails' list.")
+        click.echo(f"Error: Email scenario file {email_events_path} must contain an 'emails' list.", err=True)
+        ctx.exit(1)
+
+    email_delay_seconds = email_scenario_data.get('delay_seconds', scenario_interval)
+    if not isinstance(email_delay_seconds, (int, float)) or email_delay_seconds < 0:
+        logger.warning(f"Invalid 'delay_seconds' in email_events ({email_delay_seconds}), defaulting to {scenario_interval}s.")
+        email_delay_seconds = scenario_interval
+
+    total_emails = len(emails_to_process)
+    emails_sent_successfully = 0
+    emails_failed_count = 0
+
+    if total_emails == 0:
+        logger.info(f"No emails found in the {email_events_path} file.")
+        click.echo(f"No emails to send in the {email_events_path} file.")
+        return False # Not skipped, just no emails to send
+
+    click.echo(f"Loaded {total_emails} email events to process from {email_events_path}.")
+    with click.progressbar(emails_to_process, label='Sending scenario emails') as progress_emails:
+        for i, email_config in enumerate(progress_emails):
+            logger.info(f"Processing email {i + 1}/{total_emails} from scenario {email_events_path}...")
+
+            template_data = email_config.get('template')
+            if not isinstance(template_data, dict):
+                logger.warning(f"Skipping email {i + 1} in scenario {email_events_path} due to missing or invalid 'template' object.")
+                emails_failed_count += 1
+                continue
+
+            recipient = email_recipient_override or \
+                        template_data.get('to_email') or \
+                        os.environ.get('DD_EMAIL_ADDRESS')
+
+            subject = template_data.get('subject')
+            body = template_data.get('content')
+
+            if not all([recipient, subject, body is not None]):
+                logger.warning(f"Skipping email {i + 1} in scenario {email_events_path} due to missing recipient, subject, or content.")
+                emails_failed_count += 1
+                continue
+
+            variables = email_config.get('variables', {})
+            if isinstance(variables, dict) and variables:
+                for key, value in variables.items():
+                    placeholder = f"{{{{ {key} }}}}"
+                    if isinstance(subject, str): subject = subject.replace(placeholder, str(value))
+                    if isinstance(body, str): body = body.replace(placeholder, str(value))
+
+            if _send_datadog_scenario_email(current_sendgrid_api_key, subject, body, recipient):
+                emails_sent_successfully += 1
+            else:
+                emails_failed_count += 1
+
+            if i < total_emails - 1 and email_delay_seconds > 0:
+                logger.info(f"Waiting for {email_delay_seconds} seconds before next scenario email from {email_events_path}...")
+                time.sleep(email_delay_seconds)
+
+    click.echo(f"Email Events Summary ({email_events_path}): Sent {emails_sent_successfully}/{total_emails}. Failed: {emails_failed_count}.")
+    logger.info(f"Email Events Summary ({email_events_path}): Sent {emails_sent_successfully}/{total_emails}. Failed: {emails_failed_count}.")
+    return False # Processed, not skipped
 
 if __name__ == '__main__':
     # Use Click CLI instead of argparse

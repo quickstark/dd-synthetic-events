@@ -20,9 +20,16 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL_ADDRESS', SENDER_EMAIL_FALLBACK)
 # Note: SENDGRID_API_KEY will be fetched from env or CLI option within the command
 
 def _send_single_email(sendgrid_api_key: str, subject: str, body: str, recipient_email: str) -> bool:
-    """
-    Sends a single email using SendGrid.
-    Inspired by the user's provided example function.
+    """Sends a single email using SendGrid.
+
+    Args:
+        sendgrid_api_key: The SendGrid API key.
+        subject: The subject of the email.
+        body: The plain text content of the email.
+        recipient_email: The email address of the recipient.
+
+    Returns:
+        True if the email was sent successfully, False otherwise.
     """
     if not sendgrid_api_key:
         logger.error("SendGrid API key not provided, cannot send email.")
@@ -55,6 +62,45 @@ def _send_single_email(sendgrid_api_key: str, subject: str, body: str, recipient
         logger.error(f"Failed to send email to {recipient_email} via SendGrid: {str(e)}", exc_info=True)
         return False
 
+def _process_and_send_email(email_config: dict, api_key: str, email_index: int, total_emails: int) -> bool:
+    """Processes a single email configuration and sends the email.
+
+    Args:
+        email_config: Dictionary containing the email's template and variables.
+        api_key: SendGrid API key.
+        email_index: The index of the current email being processed.
+        total_emails: The total number of emails to be processed.
+
+    Returns:
+        True if the email was sent successfully, False otherwise.
+    """
+    logger.info(f"Processing email {email_index + 1}/{total_emails}...")
+
+    template_data = email_config.get('template')
+    if not isinstance(template_data, dict):
+        logger.warning(f"Skipping email {email_index + 1} due to missing or invalid 'template' object.")
+        return False
+
+    recipient = template_data.get('to_email')
+    subject = template_data.get('subject')
+    body = template_data.get('content')
+
+    if not all([recipient, subject, body is not None]):  # body can be an empty string
+        logger.warning(f"Skipping email {email_index + 1} due to missing 'to_email', 'subject', or 'content' in template data.")
+        return False
+
+    # Basic variable processing
+    variables = email_config.get('variables', {})
+    if isinstance(variables, dict) and variables:
+        for key, value in variables.items():
+            placeholder = f"{{{{ {key} }}}}"  # Matches {{ key }}
+            if isinstance(subject, str):
+                subject = subject.replace(placeholder, str(value))
+            if isinstance(body, str):
+                body = body.replace(placeholder, str(value))
+
+    return _send_single_email(api_key, subject, body, recipient)
+
 @click.command()
 @click.option('--file-path', 
               required=True, 
@@ -64,16 +110,23 @@ def _send_single_email(sendgrid_api_key: str, subject: str, body: str, recipient
               envvar='SENDGRID_API_KEY', 
               help='SendGrid API key. Can also be set via SENDGRID_API_KEY environment variable.')
 def send_scenario(file_path: str, api_key: str):
-    """
-    Reads email definitions from a JSON scenario file and sends them using SendGrid.
-    
+    """Reads email definitions from a JSON scenario file and sends them using SendGrid.
+
     The JSON file should have an "emails" key containing a list of objects.
     Each object should have a "template" key, which in turn contains:
     - "to_email": Recipient's email address.
     - "subject": Email subject.
     - "content": Email body (plain text).
     
+    An optional "delay_seconds" key can be present at the root of the JSON
+    to specify a delay between sending emails.
+
+    Args:
+        file_path: Path to the JSON file containing email scenario definitions.
+        api_key: SendGrid API key.
+    
     Example `email_events.json` structure:
+    ```json
     {
       "emails": [
         {
@@ -82,12 +135,12 @@ def send_scenario(file_path: str, api_key: str):
             "subject": "Subject for email 1",
             "content": "Body for email 1."
           },
-          "variables": {} // Optional, currently not processed by this simplified script
-        },
-        // ... more email objects
+          "variables": {} // Optional, for placeholder replacement
+        }
       ],
-      "delay_seconds": 0 // Optional: delay between sending emails
+      "delay_seconds": 0
     }
+    ```
     """
     logger.info(f"Starting email scenario from file: {file_path}")
     logger.info(f"Using sender email: {SENDER_EMAIL}")
@@ -136,39 +189,10 @@ def send_scenario(file_path: str, api_key: str):
         return
 
     for i, email_config in enumerate(emails_to_process):
-        logger.info(f"Processing email {i+1}/{total_emails}...")
-        
-        template_data = email_config.get('template')
-        if not isinstance(template_data, dict):
-            logger.warning(f"Skipping email {i+1} due to missing or invalid 'template' object.")
-            emails_failed +=1
-            continue
-            
-        recipient = template_data.get('to_email')
-        subject = template_data.get('subject')
-        body = template_data.get('content') # Assumed to be plain text
-
-        if not all([recipient, subject, body is not None]): # body can be empty string
-            logger.warning(f"Skipping email {i+1} due to missing 'to_email', 'subject', or 'content' in template data.")
-            emails_failed +=1
-            continue
-        
-        # Basic variable processing (optional, kept very simple)
-        # If 'variables' exist in email_config, try to replace them in subject and body.
-        variables = email_config.get('variables', {})
-        if isinstance(variables, dict) and variables:
-            for key, value in variables.items():
-                placeholder = f"{{{{ {key} }}}}" # Matches {{ key }}
-                if isinstance(subject, str):
-                    subject = subject.replace(placeholder, str(value))
-                if isinstance(body, str):
-                    body = body.replace(placeholder, str(value))
-
-        if _send_single_email(api_key, subject, body, recipient):
+        if _process_and_send_email(email_config, api_key, i, total_emails):
             emails_sent_successfully += 1
         else:
             emails_failed += 1
-            # Failure already logged by _send_single_email
 
         if i < total_emails - 1 and delay_seconds > 0:
             logger.info(f"Waiting for {delay_seconds} seconds before next email...")
